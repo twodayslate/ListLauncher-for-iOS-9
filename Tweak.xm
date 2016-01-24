@@ -84,7 +84,6 @@ static NSMutableArray* createSections() {
 	HBLogDebug(@"Creating sections!");
 	completedCreatedSections = NO;
 
-	sortedDisplayIdentifiers = [[NSArray array] retain];
 	sectionIndexTitles = [[NSMutableArray array] retain];
 	sectionIndexes = [[NSMutableArray array] retain];
 	NSMutableArray *sortedDisplayNames = [NSMutableArray array];
@@ -318,9 +317,9 @@ static id observer;
 	observer = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
 		object:nil queue:[NSOperationQueue mainQueue]
 		usingBlock:^(NSNotification *notification) {
-			if(sortedDisplayIdentifiers == nil) {
+			if(!hasCreatedSectionsOnce) {
 				HBLogDebug(@"Should be first create hopefully!");
-				sortedDisplayIdentifiers = [NSArray array];
+				sortedDisplayIdentifiers = nil;
 				sectionIndexTitles = [NSMutableArray array];
 				sectionIndexes = [NSMutableArray array];
 				createSections();
