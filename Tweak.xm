@@ -74,15 +74,25 @@
 @property (nonatomic,retain,readonly) UITextField * searchField;
 @end
 
-static NSArray *sortedDisplayIdentifiers = [NSArray array];
-static NSMutableArray *sectionIndexTitles = [NSMutableArray array];
-static NSMutableArray *sectionIndexes = [NSMutableArray array];
+static BOOL completedCreatedSections = NO;
+static BOOL hasCreatedSectionsOnce = NO;
+static NSArray *sortedDisplayIdentifiers = nil;
+static NSMutableArray *sectionIndexTitles = nil;
+static NSMutableArray *sectionIndexes = nil;
 
 static NSMutableArray* createSections() {
+	HBLogDebug(@"Creating sections!");
+	completedCreatedSections = NO;
+
+	sortedDisplayIdentifiers = [[NSArray array] retain];
+	sectionIndexTitles = [[NSMutableArray array] retain];
+	sectionIndexes = [[NSMutableArray array] retain];
+	NSMutableArray *sortedDisplayNames = [NSMutableArray array];
+	sectionIndexTitles = [[NSMutableArray array] retain];
+
 	ALApplicationList *applications = [%c(ALApplicationList) sharedApplicationList];
 	[applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
-	NSMutableArray *sortedDisplayNames = [NSMutableArray array];
-	sectionIndexTitles = [NSMutableArray array];
+	[sortedDisplayIdentifiers retain];
 
 	SPSearchResultSection *newSection = [[%c(SPSearchResultSection) alloc] init];
 	[newSection setDisplayIdentifier:@"My Applications"];
@@ -123,6 +133,10 @@ static NSMutableArray* createSections() {
 	NSMutableArray *rar = [NSMutableArray array];
 	[rar addObject:newSection];
 
+	hasCreatedSectionsOnce = YES;
+	completedCreatedSections = YES;
+
+	HBLogDebug(@"has completed creation");
 	return rar;
 }
 
@@ -160,6 +174,7 @@ static BOOL canDeclare = NO;
 
 - (void)addSections:(NSMutableArray *)arg1 {
 	//%log;
+	HBLogDebug(@"adding sections");
 	SPUISearchViewController *sharedvc = [%c(SPUISearchViewController) sharedInstance];
 	if(![self shouldHideSection:arg1]) {
 		sharedvc.isShowingListLauncher = NO;
@@ -180,9 +195,6 @@ static BOOL canDeclare = NO;
 // }
 - (BOOL)_hasResults {
 	return YES;
-}
-- (BOOL)_hasNoResultsForQuery {
-	return NO;
 }
 
 %property (assign, nonatomic) BOOL isShowingListLauncher;
@@ -211,20 +223,22 @@ static BOOL canDeclare = NO;
 }
 - (int)numberOfPossibleRowsInSection:(int)arg1 {
 	%log;
-	if(self.isShowingListLauncher) {
-		createSections();
+
+	if(self.isShowingListLauncher && sortedDisplayIdentifiers && completedCreatedSections && hasCreatedSectionsOnce) {
+		HBLogDebug(@"sortedDisplayIdentifiers = %@", [sortedDisplayIdentifiers class]);
 		return [sortedDisplayIdentifiers count];
 	}
-	return %orig;
 	
+	return %orig;
 }
 
 %new
 -(NSArray *)sectionIndexTitlesForTableView:(UITableView *)arg1 {
 	%log;
-	if(self.isShowingListLauncher) {
-		createSections();
+	if(self.isShowingListLauncher && hasCreatedSectionsOnce && sectionIndexTitles && completedCreatedSections) {
 		//HBLogDebug(@"indexes = %@", sectionIndexTitles);
+		HBLogDebug(@"sortedDisplayIdentifiers = %@", [sectionIndexTitles class]);
+
 		return (NSArray *)[sectionIndexTitles copy];
 	}
 	return nil;
@@ -295,7 +309,26 @@ static BOOL canDeclare = NO;
 
 %end
 
+static id observer;
 %ctor {
 	dlopen("/Library/MobileSubstrate/DynamicLibraries/AppList.dylib", RTLD_NOW);
 	dlopen("/Library/MobileSubstrate/DynamicLibraries/org.thebigboss.nearbynews.dylib", RTLD_NOW);
+	// Wait to do UI stuff
+	// http://iphonedevwiki.net/index.php/User:Uroboro#UI_usage
+	observer = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
+		object:nil queue:[NSOperationQueue mainQueue]
+		usingBlock:^(NSNotification *notification) {
+			if(sortedDisplayIdentifiers == nil) {
+				HBLogDebug(@"Should be first create hopefully!");
+				sortedDisplayIdentifiers = [NSArray array];
+				sectionIndexTitles = [NSMutableArray array];
+				sectionIndexes = [NSMutableArray array];
+				createSections();
+			}
+		}
+	];
+}
+
+%dtor {
+	[[NSNotificationCenter defaultCenter] removeObserver:observer];
 }
