@@ -114,7 +114,7 @@ static NSMutableArray* createSections() {
   		}
 
 		SPSearchResult *myOtherCustomThing = [[%c(SPSearchResult) alloc] init];
-		[myOtherCustomThing setTitle:[applications valueForKey:@"displayName" forDisplayIdentifier:displayID]];
+		[myOtherCustomThing setTitle:displayName];
 		[myOtherCustomThing setSearchResultDomain:4];
 		[myOtherCustomThing setBundleID:displayID];
 		[myOtherCustomThing setExternalIdentifier:displayID];
