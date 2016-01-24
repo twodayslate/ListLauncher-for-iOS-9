@@ -70,14 +70,22 @@
 - (void)updateWithTitle:(id)arg1 section:(unsigned int)arg2 isExpanded:(BOOL)arg3;
 @end
 
-static NSArray *sortedDisplayIdentifiers = nil;
-static ALApplicationList *applications = nil;
+@interface SPUISearchHeader : UIView 
+@property (nonatomic,retain,readonly) UITextField * searchField;
+@end
 
+static NSArray *sortedDisplayIdentifiers = [NSArray array];
+static NSMutableArray *sectionIndexTitles = [NSMutableArray array];
+static NSMutableArray *sectionIndexes = [NSMutableArray array];
+static NSMutableArray *sortedDisplayNames = [NSMutableArray array];
+static ALApplicationList *applications = nil;
 
 static NSMutableArray* createSections() {
 	applications = [%c(ALApplicationList) sharedApplicationList];
 	[applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
-	
+	sortedDisplayNames = [NSMutableArray array];
+	sectionIndexTitles = [NSMutableArray array];
+
 	SPSearchResultSection *newSection = [[%c(SPSearchResultSection) alloc] init];
 	[newSection setDisplayIdentifier:@"My Applications"];
 	[newSection setCategory:@"My Applications"];
@@ -85,6 +93,21 @@ static NSMutableArray* createSections() {
 
 	for(NSString *displayID in sortedDisplayIdentifiers) {
 		//HBLogDebug(@"%@", displayID);
+		NSString *displayName = [applications valueForKey:@"displayName" forDisplayIdentifier:displayID];
+		[sortedDisplayNames addObject:displayName];
+		NSString * firstLetter = [[displayName substringWithRange:[displayName rangeOfComposedCharacterSequenceAtIndex:0]] uppercaseString];
+  		NSCharacterSet *alphaSet = [NSCharacterSet letterCharacterSet];
+		BOOL valid = [[firstLetter stringByTrimmingCharactersInSet:alphaSet] isEqualToString:@""];
+		if(!valid) {
+			firstLetter = @"#";
+		}
+
+  		if(![sectionIndexTitles containsObject:firstLetter]) {
+  			[sectionIndexTitles addObject:firstLetter];
+  			// now an index
+  			[sectionIndexes addObject:[NSNumber numberWithInteger:[sortedDisplayNames indexOfObject:displayName]]];
+  		}
+
 		SPSearchResult *myOtherCustomThing = [[%c(SPSearchResult) alloc] init];
 		[myOtherCustomThing setTitle:[applications valueForKey:@"displayName" forDisplayIdentifier:displayID]];
 		[myOtherCustomThing setSearchResultDomain:4];
@@ -102,6 +125,8 @@ static NSMutableArray* createSections() {
 	NSMutableArray *rar = [NSMutableArray array];
 	[rar addObject:newSection];
 
+	HBLogDebug(@"indexes = %@", sectionIndexes);
+
 	return rar;
 	// SPUISearchViewController *vc = [%c(SPUISearchViewController) sharedInstance];
 	// SPUISearchModel *model = [vc currentSearchModel];
@@ -113,7 +138,6 @@ static NSMutableArray* createSections() {
 	//[firstSection setDisplayIdentifier:@"My Apps"];
 	//[arg1 replaceObjectAtIndex:0 withObject:firstSection];
 }
-
 
 
 //This works too but there are some annoying bugs that are too hard to fix correctly so I don't do this.
@@ -154,16 +178,19 @@ static BOOL canDeclare = NO;
 		sharedvc.isShowingListLauncher = NO;
 		%orig;
 	} else {
-		NSMutableArray *newSections = createSections();
 		sharedvc.isShowingListLauncher = YES;
-		%orig(newSections);
+		%orig(createSections());
 	}
 }
 
 %end
 
 %hook SPUISearchViewController
-
+// -(id)init {
+// 	%log;
+// 	listLauncherSection = createSections();
+// 	return %orig;
+// }
 - (BOOL)_hasResults {
 	return YES;
 }
@@ -183,8 +210,8 @@ static BOOL canDeclare = NO;
 		}
 
 		SPUISearchTableHeaderView *headerView = (SPUISearchTableHeaderView *) [tableview headerViewForSection:0];
+		[headerView setMoreButtonVisible:NO];
 		[headerView updateWithTitle:@"LISTLAUNCHER" section:0 isExpanded:YES];
-		HBLogDebug(@"changed title here %@", headerView);
 	}
 }
 
@@ -200,12 +227,49 @@ static BOOL canDeclare = NO;
 	if(self.isShowingListLauncher) {
 		applications = [%c(ALApplicationList) sharedApplicationList];
 		[applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
-		HBLogDebug(@"number of possible rows = %d", (int)[sortedDisplayIdentifiers count]);
 		return [sortedDisplayIdentifiers count];
 	}
 	return %orig;
 	
 }
+
+%new
+-(NSArray *)sectionIndexTitlesForTableView:(UITableView *)arg1 {
+	%log;
+	if(self.isShowingListLauncher) {
+		createSections();
+		//HBLogDebug(@"indexes = %@", sectionIndexTitles);
+		return (NSArray *)[sectionIndexTitles copy];
+	}
+	return nil;
+}
+
+%new
+-(int)tableView:(UITableView *)tableview sectionForSectionIndexTitle:(id)title atIndex:(int)index {
+	%log;
+
+	SPUISearchHeader *sheader = MSHookIvar<SPUISearchHeader *>(self, "_searchHeader");
+	[sheader.searchField resignFirstResponder];
+
+	if([title isEqualToString:@"#"]) return 0;
+	[tableview scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:[[sectionIndexes objectAtIndex:index] integerValue] inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+	return 99999999; // this allows for scrolling without jumping to some random ass section
+
+	// if([title isEqual:@"▢"]) {
+	// 	return recentSection;
+	// } else if([title isEqual:@"☆"]) {
+	// 	return favoriteSection;
+	// } else {
+	// 	if(logging) NSLog(@"jump to (%@,%d) for title %@ at index %d",[indexPositions objectAtIndex:index],(int)appSection,title,index);
+	// 	if([title isEqualToString:@"#"]) return appSection;
+	// 	[tableview scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:[[indexPositions objectAtIndex:index] integerValue] inSection:appSection] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+	// 	return 99999999; // this allows for scrolling without jumping to some random ass section
+	// }
+
+	//return index;
+}
+
+
 %end
 
 %hook SPUISearchTableHeaderView
@@ -213,14 +277,33 @@ static BOOL canDeclare = NO;
 	%log;
 	SPUISearchViewController *sharedvc = [%c(SPUISearchViewController) sharedInstance];
 	if(sharedvc.isShowingListLauncher) {
+		[self setMoreButtonVisible:NO];
 		arg1 = @"LISTLAUNCHER";
+		arg3 = YES;
 	}
 	%orig;
+}
+- (void)setMoreButtonVisible:(BOOL)arg1 {
+		SPUISearchViewController *sharedvc = [%c(SPUISearchViewController) sharedInstance];
+
+	if(sharedvc.isShowingListLauncher) {
+		%orig(NO);
+	} else {
+		%orig;
+	}
 }
 %end
 
 
 %hook SPUISearchTableView
+- (id)initWithFrame:(CGRect)frame style:(UITableViewStyle)style {
+	%log;
+	self = %orig;
+	self.sectionIndexColor = [UIColor whiteColor]; // index text
+	self.sectionIndexTrackingBackgroundColor = [UIColor clearColor]; //bg touched
+	self.sectionIndexBackgroundColor = [UIColor clearColor]; //bg touched
+	return self;
+}
 - (void)clearExpansionState {
 	%log;
 	SPUISearchViewController *sharedvc = [%c(SPUISearchViewController) sharedInstance];
@@ -236,6 +319,7 @@ static BOOL canDeclare = NO;
 	%log;
 	%orig;
 }
+
 %end
 
 // %hook SPUISearchViewController
