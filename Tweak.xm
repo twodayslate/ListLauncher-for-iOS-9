@@ -74,7 +74,6 @@
 @property (nonatomic,retain,readonly) UITextField * searchField;
 @end
 
-static BOOL completedCreatedSections = NO;
 static BOOL hasCreatedSectionsOnce = NO;
 static NSArray *sortedDisplayIdentifiers = nil;
 static NSMutableArray *sectionIndexTitles = nil;
@@ -82,7 +81,6 @@ static NSMutableArray *sectionIndexes = nil;
 
 static NSMutableArray* createSections() {
 	HBLogDebug(@"Creating sections!");
-	completedCreatedSections = NO;
 
 	sectionIndexTitles = [[NSMutableArray array] retain];
 	sectionIndexes = [[NSMutableArray array] retain];
@@ -90,7 +88,7 @@ static NSMutableArray* createSections() {
 	sectionIndexTitles = [[NSMutableArray array] retain];
 
 	ALApplicationList *applications = [%c(ALApplicationList) sharedApplicationList];
-	[applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
+	NSDictionary *appListResults = [applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
 	[sortedDisplayIdentifiers retain];
 
 	SPSearchResultSection *newSection = [[%c(SPSearchResultSection) alloc] init];
@@ -100,7 +98,7 @@ static NSMutableArray* createSections() {
 
 	for(NSString *displayID in sortedDisplayIdentifiers) {
 		//HBLogDebug(@"%@", displayID);
-		NSString *displayName = [applications valueForKey:@"displayName" forDisplayIdentifier:displayID];
+		NSString *displayName = [appListResults objectForKey:displayID];
 		[sortedDisplayNames addObject:displayName];
 		NSString * firstLetter = [[displayName substringWithRange:[displayName rangeOfComposedCharacterSequenceAtIndex:0]] uppercaseString];
   		NSCharacterSet *alphaSet = [NSCharacterSet letterCharacterSet];
@@ -133,7 +131,6 @@ static NSMutableArray* createSections() {
 	[rar addObject:newSection];
 
 	hasCreatedSectionsOnce = YES;
-	completedCreatedSections = YES;
 
 	HBLogDebug(@"has completed creation");
 	return rar;
@@ -223,7 +220,7 @@ static BOOL canDeclare = NO;
 - (int)numberOfPossibleRowsInSection:(int)arg1 {
 	%log;
 
-	if(self.isShowingListLauncher && sortedDisplayIdentifiers && completedCreatedSections && hasCreatedSectionsOnce) {
+	if(self.isShowingListLauncher && sortedDisplayIdentifiers && hasCreatedSectionsOnce) {
 		HBLogDebug(@"sortedDisplayIdentifiers = %@", [sortedDisplayIdentifiers class]);
 		return [sortedDisplayIdentifiers count];
 	}
@@ -234,7 +231,7 @@ static BOOL canDeclare = NO;
 %new
 -(NSArray *)sectionIndexTitlesForTableView:(UITableView *)arg1 {
 	%log;
-	if(self.isShowingListLauncher && hasCreatedSectionsOnce && sectionIndexTitles && completedCreatedSections) {
+	if(self.isShowingListLauncher && hasCreatedSectionsOnce && sectionIndexTitles) {
 		//HBLogDebug(@"indexes = %@", sectionIndexTitles);
 		HBLogDebug(@"sortedDisplayIdentifiers = %@", [sectionIndexTitles class]);
 

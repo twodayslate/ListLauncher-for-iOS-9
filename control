@@ -1,6 +1,6 @@
 Package: org.thebigboss.listlauncher9
 Name: ListLauncher9
-Depends: mobilesubstrate, org.thebigboss.nearbynews (>1.0)
+Depends: mobilesubstrate, org.thebigboss.nearbynews (>=1.1)
 Version: 0.0.1
 Architecture: iphoneos-arm
 Description: An awesome MobileSubstrate tweak!
