@@ -77,13 +77,11 @@
 static NSArray *sortedDisplayIdentifiers = [NSArray array];
 static NSMutableArray *sectionIndexTitles = [NSMutableArray array];
 static NSMutableArray *sectionIndexes = [NSMutableArray array];
-static NSMutableArray *sortedDisplayNames = [NSMutableArray array];
-static ALApplicationList *applications = nil;
 
 static NSMutableArray* createSections() {
-	applications = [%c(ALApplicationList) sharedApplicationList];
+	ALApplicationList *applications = [%c(ALApplicationList) sharedApplicationList];
 	[applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
-	sortedDisplayNames = [NSMutableArray array];
+	NSMutableArray *sortedDisplayNames = [NSMutableArray array];
 	sectionIndexTitles = [NSMutableArray array];
 
 	SPSearchResultSection *newSection = [[%c(SPSearchResultSection) alloc] init];
@@ -125,18 +123,7 @@ static NSMutableArray* createSections() {
 	NSMutableArray *rar = [NSMutableArray array];
 	[rar addObject:newSection];
 
-	HBLogDebug(@"indexes = %@", sectionIndexes);
-
 	return rar;
-	// SPUISearchViewController *vc = [%c(SPUISearchViewController) sharedInstance];
-	// SPUISearchModel *model = [vc currentSearchModel];
-	// [vc _clearSearchResults];
-	// [vc _reloadTable];
-	// [model addSections:rar];
-
-	//SPSearchResultSection *firstSection = [arg1 objectAtIndex:0];
-	//[firstSection setDisplayIdentifier:@"My Apps"];
-	//[arg1 replaceObjectAtIndex:0 withObject:firstSection];
 }
 
 
@@ -225,8 +212,7 @@ static BOOL canDeclare = NO;
 - (int)numberOfPossibleRowsInSection:(int)arg1 {
 	%log;
 	if(self.isShowingListLauncher) {
-		applications = [%c(ALApplicationList) sharedApplicationList];
-		[applications applicationsFilteredUsingPredicate:nil onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
+		createSections();
 		return [sortedDisplayIdentifiers count];
 	}
 	return %orig;
@@ -254,19 +240,6 @@ static BOOL canDeclare = NO;
 	if([title isEqualToString:@"#"]) return 0;
 	[tableview scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:[[sectionIndexes objectAtIndex:index] integerValue] inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
 	return 99999999; // this allows for scrolling without jumping to some random ass section
-
-	// if([title isEqual:@"▢"]) {
-	// 	return recentSection;
-	// } else if([title isEqual:@"☆"]) {
-	// 	return favoriteSection;
-	// } else {
-	// 	if(logging) NSLog(@"jump to (%@,%d) for title %@ at index %d",[indexPositions objectAtIndex:index],(int)appSection,title,index);
-	// 	if([title isEqualToString:@"#"]) return appSection;
-	// 	[tableview scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:[[indexPositions objectAtIndex:index] integerValue] inSection:appSection] atScrollPosition:UITableViewScrollPositionTop animated:NO];
-	// 	return 99999999; // this allows for scrolling without jumping to some random ass section
-	// }
-
-	//return index;
 }
 
 
@@ -321,67 +294,6 @@ static BOOL canDeclare = NO;
 }
 
 %end
-
-// %hook SPUISearchViewController
-// // - (BOOL)_hasNoQuery {
-// // 	%log;
-// // 	BOOL orig = %orig;
-// // 	if(orig) {
-// // 		setTheModel();
-// // 	}
-// // 	return %orig;
-// // }
-
-// - (id)countOfVisibleResultsInSection:(int)arg1 {
-// 	%log;
-// 	id origValue = %orig;
-// 	HBLogDebug(@"original return value = %@", origValue);
-// 	return %orig;
-// }
-// - (int)maxUnexpandedRowsInSection:(int)arg1 {
-// 	%log;
-// 	int origValue = %orig;
-// 	HBLogDebug(@"original return value = %d", origValue);
-// 	return %orig;
-// }
-// - (int)numberOfPossibleRowsInSection:(int)arg1 {
-// 	%log;
-// 	int origValue = %orig;
-// 	HBLogDebug(@"original return value = %d", origValue);
-// 	HBLogDebug(@"has results = %d", [self _hasResults]);
-// 	applications = [%c(ALApplicationList) sharedApplicationList];
-// 	[applications applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:@"isSystemApplication = TRUE"] onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
-// 	return [sortedDisplayIdentifiers count];
-// }
-// - (int)tableView:(id)arg1 numberOfRowsInSection:(int)arg2 {
-// 	%log;
-// 	int origValue = %orig;
-// 	logTheThings();
-// 	HBLogDebug(@"original return value = %d", origValue);
-// 	return %orig;
-// }
-// - (BOOL)shouldShowMoreButtonForSection:(unsigned int)arg1 {
-// 	return %orig;
-// }
-// %end
-
-// %hook UITableViewCell
-// %new
-// -(void)updateClippingHeight:(id)arg1 {
-// 	return;
-// }
-// %end
-
-// %hook SpringBoard
-// -(id)init {
-// 	%log;
-// 	if(applications && applications != nil) {
-// 		applications = [%c(ALApplicationList) sharedApplicationList];
-// 		[applications applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:@"isSystemApplication = TRUE"] onlyVisible:YES titleSortedIdentifiers:&sortedDisplayIdentifiers];
-// 	}
-// 	return %orig;
-// }
-// %end
 
 %ctor {
 	dlopen("/Library/MobileSubstrate/DynamicLibraries/AppList.dylib", RTLD_NOW);
