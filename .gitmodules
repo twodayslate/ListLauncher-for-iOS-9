@@ -1,0 +1,3 @@
+[submodule "NearbyNews"]
+	path = NearbyNews
+	url = https://github.com/twodayslate/NearbyNews.git
