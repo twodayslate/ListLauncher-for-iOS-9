@@ -308,7 +308,6 @@ static BOOL canDeclare = NO;
 static id observer;
 %ctor {
 	dlopen("/Library/MobileSubstrate/DynamicLibraries/AppList.dylib", RTLD_NOW);
-	dlopen("/Library/MobileSubstrate/DynamicLibraries/org.thebigboss.nearbynews.dylib", RTLD_NOW);
 	// Wait to do UI stuff
 	// http://iphonedevwiki.net/index.php/User:Uroboro#UI_usage
 	observer = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification

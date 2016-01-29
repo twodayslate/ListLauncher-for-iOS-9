@@ -1,7 +1,8 @@
 Package: org.thebigboss.listlauncher9
 Name: ListLauncher9
 Depends: mobilesubstrate
-Version: 0.0.1
+Conflicts: org.thebigboss.nearbynews
+Version: 1.0
 Architecture: iphoneos-arm
 Description: Appliciation list inside of Spotlight! Launch apps fast!
 Maintainer: twodayslate
