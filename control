@@ -1,5 +1,5 @@
 Package: org.thebigboss.listlauncher9
-Name: ListLauncher9
+Name: ListLauncher for iOS 9
 Depends: mobilesubstrate
 Conflicts: org.thebigboss.nearbynews
 Version: 1.0
