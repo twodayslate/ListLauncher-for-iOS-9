@@ -231,7 +231,7 @@ static BOOL canDeclare = NO;
 %new
 -(NSArray *)sectionIndexTitlesForTableView:(UITableView *)arg1 {
 	%log;
-	if(self.isShowingListLauncher && hasCreatedSectionsOnce && sectionIndexTitles) {
+	if(self.isShowingListLauncher && hasCreatedSectionsOnce && sectionIndexTitles && arg1.numberOfSections > 0) {
 		//HBLogDebug(@"indexes = %@", sectionIndexTitles);
 		HBLogDebug(@"sortedDisplayIdentifiers = %@", [sectionIndexTitles class]);
 
